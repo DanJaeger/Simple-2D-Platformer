@@ -1,0 +1,61 @@
+# Unity general
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Mm]emoryCaptures/
+[Rr]ecordings/
+.vs/
+.gradle/
+
+# Visual Studio / Rider
+*.csproj
+*.sln
+*.suo
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+# Unity auto-generated files
+sysinfo.txt
+*.pidb.meta
+*.pdb.meta
+*.mdb.meta
+
+# Android / iOS builds
+*.apk
+*.aab
+*.unitypackage
+*.app
+
+# Exclude auto-generated Addressables
+/[Aa]ssets/[Aa]ddressable[Aa]ssets[Dd]ata/*/*.bin*
+
+# Temporary streaming assets
+/[Aa]ssets/[Ss]treamingAssets/aa.meta
+/[Aa]ssets/[Ss]treamingAssets/aa/*
+
+# Exceptions: keep all assets essential for the project
+!/Assets/**
+!/Assets/Scenes/**
+!/Assets/Scripts/**
+!/Assets/Shaders/**
+!/Assets/External/**
+!/Assets/Standard Assets/**
+!/Assets/Plugins/**
+!/Assets/Ink/**
+!/Assets/TextMesh Pro/**
+!/Packages/manifest.json
+!/Packages/packages-lock.json
+
+# Ignore editor-specific plugin files
+Assets/Plugins/Editor/JetBrains*
+Assets/Plugins/Editor/*.meta
