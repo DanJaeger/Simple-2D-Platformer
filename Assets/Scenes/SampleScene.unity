@@ -522,8 +522,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6e7c76496a432ac48a629c6f21d469f2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CharacterStatsController
-  initialHealth: 100
-  initialStamina: 100
+  statsTemplate: {fileID: 11400000, guid: 3ba977b97b58f414d9cba7f70a442db2, type: 2}
 --- !u!114 &750955024
 MonoBehaviour:
   m_ObjectHideFlags: 0
