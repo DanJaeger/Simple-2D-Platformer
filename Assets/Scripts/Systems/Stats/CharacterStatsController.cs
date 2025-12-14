@@ -3,12 +3,15 @@ using UnityEngine;
 public class CharacterStatsController : MonoBehaviour
 {
     private CharacterStatsModel model;
-    [SerializeField] private float initialHealth;
-    [SerializeField] private float initialStamina;
+    [SerializeField] private CharacterStatsSO statsTemplate;
 
     private void Awake()
     {
-        model = new CharacterStatsModel(initialHealth, initialStamina);
+        model = new CharacterStatsModel(
+            statsTemplate.initialHealth,
+            statsTemplate.initialStamina,
+            statsTemplate.maxHealth,
+            statsTemplate.maxStamina);
     }
 
     // Método para que la Vista se suscriba al Modelo

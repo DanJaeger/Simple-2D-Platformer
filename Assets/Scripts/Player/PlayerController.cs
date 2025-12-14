@@ -5,6 +5,7 @@ using UnityEngine;
 [RequireComponent(typeof(Collider2D))]
 public class PlayerController : MonoBehaviour
 {
+    bool mStarted = false;
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
@@ -14,6 +15,9 @@ public class PlayerController : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if (InputManager.Instance.Interact) GetComponent<CharacterStatsController>().TakeDamage(10f);
+        if (InputManager.Instance.Interact && !mStarted) { 
+            mStarted = true;
+            GetComponent<CharacterStatsController>().TakeDamage(10f);
+        }
     }
 }
