@@ -3,225 +3,202 @@ using UnityEngine;
 
 [RequireComponent(typeof(InputManager))]
 [RequireComponent(typeof(Rigidbody2D))]
-[RequireComponent(typeof(Collider2D))]
+[RequireComponent(typeof(CapsuleCollider2D))]
 public class PlayerController : MonoBehaviour
 {
-    [Header("Movement (physics)")]
-    [SerializeField, Tooltip("Velocidad máxima en unidades/segundo.")] private float maxSpeed = 20f;
-    [SerializeField, Tooltip("Aceleración máxima en unidades/segundo^2.")] private float maxAcceleration = 6f;
-    [SerializeField, Tooltip("Coeficiente de damping (amortiguamiento) usado para frenar cuando no hay input.")] private float damping = 5f;
-    [SerializeField, Tooltip("Tiempo objetivo para acercarse a la velocidad deseada (segundos). Usa esto en vez de depender del dt directamente.")] private float timeToReachNeededVelocity = 0.5f;
+    [SerializeField] private CharacterStatsSO _stats;
+    private Rigidbody2D _rb;
+    private CapsuleCollider2D _col;
+    private FrameInput _frameInput;
+    private Vector2 _frameVelocity;
+    private bool _cachedQueryStartInColliders;
 
-    [Header("Rotation")]
-    [SerializeField, Tooltip("Girar hacia el raton (true) o no (false). Si usas Rigidbody2D habilita FreezeRotation en el inspector o por código para evitar conflictos.")] private bool rotateToMouse = false;
-    [SerializeField, Tooltip("Referencia a la cámara principal (opcional, por defecto Camera.main en Reset).")] private Camera mainCamera;
+    #region Interface
 
-    [Header("Jump (physics)")]
-    [SerializeField, Tooltip("Altura máxima de salto deseada (en unidades).")]
-    private float jumpHeight = 4f;
-    [SerializeField, Tooltip("Factor extra para la gravedad cuando el personaje está cayendo (factor > 1).")]
-    private float fallGravityMultiplier = 3f; // Valor recomendado: 3x a 5x
-    [SerializeField, Tooltip("Layer(s) que identifican el suelo.")]
-    private LayerMask groundLayer;
-    [SerializeField, Tooltip("Radio de la esfera para chequear el suelo.")]
-    private float groundCheckRadius = 0.2f;
-    [SerializeField, Tooltip("Transform que indica la posición del check de suelo. **¡Asignación Obligatoria!**")]
-    private Transform groundCheckPoint;
+    public Vector2 FrameInput => _frameInput.Move;
+    public event Action<bool, float> GroundedChanged;
+    public event Action Jumped;
 
-    [Header("References")]
-    [SerializeField, Tooltip("Referencia explícita al Rigidbody2D (opcional, se obtiene en Reset si está vacío).")] private Rigidbody2D rb;
+    #endregion
 
-    // Estado
-    private Vector2 currentVelocity = Vector2.zero;
-    private Vector2 input = Vector2.zero;
-    private bool isGrounded = false;
-
-    // Cachés
-    private float maxAccSq;
-    private float jumpImpulseMagnitude; // Magnitud del impulso (masa * velocidad inicial)
-
-    //Flags
-    bool mStarted = false;
-
-    private void Reset()
-    {
-        mainCamera = Camera.main;
-        rb = GetComponent<Rigidbody2D>();
-        if (rb != null)
-        {
-            rb.constraints = RigidbodyConstraints2D.FreezeRotation;
-        }
-    }
+    private float _time;
 
     private void Awake()
     {
-        if (rb == null) rb = GetComponent<Rigidbody2D>();
-        if (rb != null)
-        {
-            rb.constraints = RigidbodyConstraints2D.FreezeRotation;
-        }
-        if (mainCamera == null) mainCamera = Camera.main;
-        maxAccSq = maxAcceleration * maxAcceleration;
+        _rb = GetComponent<Rigidbody2D>();
+        _col = GetComponent<CapsuleCollider2D>();
 
-        // CÁLCULO DE LA MAGNITUD DEL IMPULSO DE SALTO (F_impulso = m * v0)
-        // La velocidad de despegue (v0) es: v0 = sqrt(2 * g * h)
-        float gravityScale = (rb != null ? rb.gravityScale : 1f);
-        float gravityMagnitude = Mathf.Abs(Physics2D.gravity.y * gravityScale);
-
-        // Evitar divisiones por cero si la gravedad es 0
-        if (gravityMagnitude <= 0.0001f) gravityMagnitude = 9.81f;
-
-        float jumpSpeed = Mathf.Sqrt(2f * gravityMagnitude * jumpHeight);
-
-        // Impulso (masa * delta_v)
-        jumpImpulseMagnitude = (rb != null ? rb.mass : 1f) * jumpSpeed;
+        _cachedQueryStartInColliders = Physics2D.queriesStartInColliders;
     }
 
-    void Update()
+    private void Update()
     {
-        if (InputManager.Instance.Interact && !mStarted)
+        _time += Time.deltaTime;
+        GatherInput();
+    }
+
+    private void GatherInput()
+    {
+        _frameInput = new FrameInput
         {
-            mStarted = true;
-            GetComponent<CharacterStatsController>().TakeDamage(10f);
+            JumpDown = Input.GetButtonDown("Jump") || Input.GetKeyDown(KeyCode.C),
+            JumpHeld = Input.GetButton("Jump") || Input.GetKey(KeyCode.C),
+            Move = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"))
+        };
+
+        if (_stats.SnapInput)
+        {
+            _frameInput.Move.x = Mathf.Abs(_frameInput.Move.x) < _stats.HorizontalDeadZoneThreshold ? 0 : Mathf.Sign(_frameInput.Move.x);
+            _frameInput.Move.y = Mathf.Abs(_frameInput.Move.y) < _stats.VerticalDeadZoneThreshold ? 0 : Mathf.Sign(_frameInput.Move.y);
         }
 
-        // --- Leer input en Update (más responsivo) ---
-        input = InputManager.Instance.PlayerMovementInput;
-        if (input.sqrMagnitude > 1f) input = input.normalized;
-
-        // --- Lógica de Salto (se activa con el input de salto) ---
-        if (InputManager.Instance.Jump)
+        if (_frameInput.JumpDown)
         {
-            if (isGrounded)
-            {
-                Jump();
-            }
-            // Consumimos el input de salto (depende de cómo esté implementado InputManager)
-            // Asumo que tu InputManager resetea "Jump" después de ser leído.
-        }
-
-        if (rotateToMouse && mainCamera != null)
-        {
-            RotateToMouse();
+            _jumpToConsume = true;
+            _timeJumpWasPressed = _time;
         }
     }
 
     private void FixedUpdate()
     {
-        if (rb == null) return;
+        CheckCollisions();
 
-        // 0) Chequear si está en el suelo (Lógica de GroundCheck)
-        CheckIfGrounded();
+        HandleJump();
+        HandleDirection();
+        HandleGravity();
 
-        // --- APLICACIÓN DE GRAVEDAD VARIABLE ---
-        ApplyVariableGravity();
-
-        // --- CÁLCULO DE MOVIMIENTO LATERAL ---
-
-        // **CORRECCIÓN 2: IGNORAR EL MOVIMIENTO VERTICAL DE INPUT (W/S) **
-        // Solo usamos la componente X (Horizontal) para el movimiento del personaje.
-        Vector2 movementInput = new Vector2(input.x, 0f);
-
-        // 1) Calculamos la velocidad deseada a partir del input
-        Vector2 desiredVelocity = movementInput * maxSpeed;
-
-        // 2) Calculamos la aceleración necesaria usando el error de velocidad.
-        Vector2 velocityError = desiredVelocity - currentVelocity;
-        Vector2 neededAcceleration = velocityError / Mathf.Max(0.0001f, timeToReachNeededVelocity);
-
-        // 3) Clamp
-        if (neededAcceleration.sqrMagnitude > maxAccSq)
-        {
-            neededAcceleration = neededAcceleration.normalized * maxAcceleration;
-        }
-
-        // 4) Integración de la velocidad *manualmente calculada*
-        float dt = Time.fixedDeltaTime;
-        currentVelocity += neededAcceleration * dt;
-
-        // 5) Damping (amortiguamiento) para la velocidad calculada
-        if (movementInput.sqrMagnitude < 0.0001f)
-        {
-            float alpha = 1f - Mathf.Exp(-damping * dt);
-            currentVelocity = Vector2.Lerp(currentVelocity, Vector2.zero, alpha);
-        }
-
-        // 6) APLICAR FUERZA DE CORRECCIÓN
-        // La fuerza corrige el error entre currentVelocity (deseada) y rb.linearVelocity (actual).
-        // **IMPORTANTE**: Solo corregimos la velocidad en el eje X. La velocidad Y es manejada por gravedad/salto.
-        Vector2 correctionVelocityError = new Vector2(currentVelocity.x, rb.linearVelocity.y) - rb.linearVelocity;
-
-        Vector2 requiredCorrectionAcceleration = correctionVelocityError / Mathf.Max(0.000001f, dt);
-        Vector2 force = requiredCorrectionAcceleration * rb.mass;
-
-        rb.AddForce(force, ForceMode2D.Force);
+        ApplyMovement();
     }
 
-    private void ApplyVariableGravity()
+    #region Collisions
+
+    private float _frameLeftGrounded = float.MinValue;
+    private bool _grounded;
+
+    private void CheckCollisions()
     {
-        // 1. Aplicar Gravedad Acelerada cuando Cae (rb.linearVelocity.y < 0)
-        if (rb.linearVelocity.y < 0 && !isGrounded)
+        Physics2D.queriesStartInColliders = false;
+
+        // Ground and Ceiling
+        bool groundHit = Physics2D.CapsuleCast(_col.bounds.center, _col.size, _col.direction, 0, Vector2.down, _stats.GrounderDistance, ~_stats.PlayerLayer);
+        bool ceilingHit = Physics2D.CapsuleCast(_col.bounds.center, _col.size, _col.direction, 0, Vector2.up, _stats.GrounderDistance, ~_stats.PlayerLayer);
+
+        // Hit a Ceiling
+        if (ceilingHit) _frameVelocity.y = Mathf.Min(0, _frameVelocity.y);
+
+        // Landed on the Ground
+        if (!_grounded && groundHit)
         {
-            // Calculamos la fuerza de gravedad extra: F = g * m * (multiplier - 1)
-            // Se resta 1 porque la gravedad estándar (rb.gravityScale) ya se aplica.
-
-            float gravityScale = rb.gravityScale;
-
-            // Usamos la gravedad global del proyecto
-            Vector2 extraGravity = Physics2D.gravity * gravityScale * (fallGravityMultiplier - 1) * rb.mass;
-
-            // Aplicamos la fuerza de forma continua (Force)
-            rb.AddForce(extraGravity, ForceMode2D.Force);
+            _grounded = true;
+            _coyoteUsable = true;
+            _bufferedJumpUsable = true;
+            _endedJumpEarly = false;
+            GroundedChanged?.Invoke(true, Mathf.Abs(_frameVelocity.y));
+        }
+        // Left the Ground
+        else if (_grounded && !groundHit)
+        {
+            _grounded = false;
+            _frameLeftGrounded = _time;
+            GroundedChanged?.Invoke(false, 0);
         }
 
-        // 2. Opcional: Aplicar un pequeño 'salto más corto' cuando se suelta el botón (Si fuera necesario)
-        // (Esto no lo implementaremos a menos que lo pidas, ya que complica la lógica.)
+        Physics2D.queriesStartInColliders = _cachedQueryStartInColliders;
     }
 
-    // --- MÉTODOS DE SALTO Y SUELO ---
+    #endregion
 
-    private void CheckIfGrounded()
+
+    #region Jumping
+
+    private bool _jumpToConsume;
+    private bool _bufferedJumpUsable;
+    private bool _endedJumpEarly;
+    private bool _coyoteUsable;
+    private float _timeJumpWasPressed;
+
+    private bool HasBufferedJump => _bufferedJumpUsable && _time < _timeJumpWasPressed + _stats.JumpBuffer;
+    private bool CanUseCoyote => _coyoteUsable && !_grounded && _time < _frameLeftGrounded + _stats.CoyoteTime;
+
+    private void HandleJump()
     {
-        if (groundCheckPoint == null)
+        if (!_endedJumpEarly && !_grounded && !_frameInput.JumpHeld && _rb.linearVelocityY > 0) _endedJumpEarly = true;
+
+        if (!_jumpToConsume && !HasBufferedJump) return;
+
+        if (_grounded || CanUseCoyote) ExecuteJump();
+
+        _jumpToConsume = false;
+    }
+
+    private void ExecuteJump()
+    {
+        _endedJumpEarly = false;
+        _timeJumpWasPressed = 0;
+        _bufferedJumpUsable = false;
+        _coyoteUsable = false;
+        _frameVelocity.y = _stats.JumpPower;
+        Jumped?.Invoke();
+    }
+
+    #endregion
+
+    #region Horizontal
+
+    private void HandleDirection()
+    {
+        if (_frameInput.Move.x == 0)
         {
-            Debug.LogError("GroundCheckPoint no está asignado. ¡Es necesario para el salto!");
-            isGrounded = false;
-            return;
+            var deceleration = _grounded ? _stats.GroundDeceleration : _stats.AirDeceleration;
+            _frameVelocity.x = Mathf.MoveTowards(_frameVelocity.x, 0, deceleration * Time.fixedDeltaTime);
         }
-
-        // Chequeo de colisión de esfera.
-        isGrounded = Physics2D.OverlapCircle(groundCheckPoint.position, groundCheckRadius, groundLayer) != null;
-    }
-
-    private void Jump()
-    {
-        // Cancelar cualquier velocidad vertical descendente.
-        // Opcional, pero ayuda a que la altura del salto sea consistente.
-        if (rb.linearVelocity.y < 0)
+        else
         {
-            rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0f);
+            _frameVelocity.x = Mathf.MoveTowards(_frameVelocity.x, _frameInput.Move.x * _stats.MaxSpeed, _stats.Acceleration * Time.fixedDeltaTime);
         }
-
-        // **CORRECCIÓN 3: Uso de AddForce con Impulse**
-        // Impulse aplica la fuerza instantánea F = m * delta_v, lo que garantiza la velocidad de despegue calculada.
-        rb.AddForce(Vector2.up * jumpImpulseMagnitude, ForceMode2D.Impulse);
-
-        // Marcamos como no grounded inmediatamente.
-        isGrounded = false;
     }
 
-    private void RotateToMouse()
+    #endregion
+
+    #region Gravity
+
+    private void HandleGravity()
     {
-        Vector3 mousePosition = mainCamera.ScreenToWorldPoint(Input.mousePosition);
-        Vector2 direction = (mousePosition - transform.position).normalized;
-
-        float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
-
-        rb.rotation = angle;
+        if (_grounded && _frameVelocity.y <= 0f)
+        {
+            _frameVelocity.y = _stats.GroundingForce;
+        }
+        else
+        {
+            var inAirGravity = _stats.FallAcceleration;
+            if (_endedJumpEarly && _frameVelocity.y > 0) inAirGravity *= _stats.JumpEndEarlyGravityModifier;
+            _frameVelocity.y = Mathf.MoveTowards(_frameVelocity.y, -_stats.MaxFallSpeed, inAirGravity * Time.fixedDeltaTime);
+        }
     }
 
+    #endregion
 
-    // Métodos de ayuda públicos
-    public Vector2 GetVelocity() => currentVelocity;
-    public Vector2 GetForward() => transform.right;
+    private void ApplyMovement() => _rb.linearVelocity = _frameVelocity;
+
+#if UNITY_EDITOR
+    private void OnValidate()
+    {
+        if (_stats == null) Debug.LogWarning("Please assign a ScriptableStats asset to the Player Controller's Stats slot", this);
+    }
+#endif
+}
+
+public struct FrameInput
+{
+    public bool JumpDown;
+    public bool JumpHeld;
+    public Vector2 Move;
+}
+
+public interface IPlayerController
+{
+    public event Action<bool, float> GroundedChanged;
+
+    public event Action Jumped;
+    public Vector2 FrameInput { get; }
 }
