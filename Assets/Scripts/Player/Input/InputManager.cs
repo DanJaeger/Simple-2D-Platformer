@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -24,6 +25,7 @@ public class InputManager : MonoBehaviour
     // --- Input Values ---
     public Vector2 PlayerMovementInput { get; private set; }
     public bool Interact { get; private set; }
+    public bool Jump { get; private set; }
 
     private void Awake()
     {
@@ -55,7 +57,13 @@ public class InputManager : MonoBehaviour
         _playerInput.Locomotion.Interact.started += OnInteractInput;
         _playerInput.Locomotion.Interact.performed += OnInteractInput;
         _playerInput.Locomotion.Interact.canceled += OnInteractInput;
+
+        // Jump
+        _playerInput.Locomotion.Jump.started += OnJumpInput;
+        _playerInput.Locomotion.Jump.performed += OnJumpInput;
+        _playerInput.Locomotion.Jump.canceled += OnJumpInput;
     }
+
 
     /// <summary>
     /// Handles movement input (WASD or analog stick).
@@ -71,6 +79,14 @@ public class InputManager : MonoBehaviour
     private void OnInteractInput(InputAction.CallbackContext context)
     {
         Interact = context.ReadValueAsButton();
+    }
+
+    /// <summary>
+    /// Handles Jump input (Space).
+    /// </summary>
+    private void OnJumpInput(InputAction.CallbackContext context)
+    {
+        Jump = context.ReadValueAsButton();
     }
 
     private void OnEnable()
