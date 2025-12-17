@@ -1,4 +1,7 @@
+using NUnit.Framework.Constraints;
 using System;
+using System.Collections;
+using UnityEngine;
 
 public class CharacterStatsModel
 {
@@ -72,6 +75,13 @@ public class CharacterStatsModel
     public void ConsumeStamina(float amount)
     {
         Stamina -= amount;
+    }
+    
+    public IEnumerator RegenStaminaRoutine() {
+        while (Stamina < c_maxStamina) {
+            Stamina++;
+            yield return new WaitForSeconds(0.5f);
+        }
     }
     #endregion
 

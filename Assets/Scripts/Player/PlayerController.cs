@@ -1,4 +1,5 @@
 using System;
+using Unity.VisualScripting;
 using UnityEngine;
 
 [RequireComponent(typeof(InputManager))]
@@ -9,6 +10,7 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private CharacterStatsSO _stats;
     private Rigidbody2D _rb;
     private CapsuleCollider2D _col;
+    private CharacterStatsController _statsController;
     private FrameInput _frameInput;
     private Vector2 _frameVelocity;
     private bool _cachedQueryStartInColliders;
@@ -27,7 +29,9 @@ public class PlayerController : MonoBehaviour
     {
         _rb = GetComponent<Rigidbody2D>();
         _col = GetComponent<CapsuleCollider2D>();
+        _statsController = GetComponent<CharacterStatsController>();
 
+        //set the vlaue if collisions with initial colliders if they are colliding. example: Starts inside the character's body
         _cachedQueryStartInColliders = Physics2D.queriesStartInColliders;
     }
 
@@ -41,8 +45,8 @@ public class PlayerController : MonoBehaviour
     {
         _frameInput = new FrameInput
         {
-            JumpDown = Input.GetButtonDown("Jump") || Input.GetKeyDown(KeyCode.C),
-            JumpHeld = Input.GetButton("Jump") || Input.GetKey(KeyCode.C),
+            JumpDown = Input.GetButtonDown("Jump") || InputManager.Instance.Jump,
+            JumpHeld = Input.GetButton("Jump") || InputManager.Instance.Jump,
             Move = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"))
         };
 
@@ -64,6 +68,7 @@ public class PlayerController : MonoBehaviour
         CheckCollisions();
 
         HandleJump();
+        //HandleDash();
         HandleDirection();
         HandleGravity();
 
@@ -93,6 +98,7 @@ public class PlayerController : MonoBehaviour
             _coyoteUsable = true;
             _bufferedJumpUsable = true;
             _endedJumpEarly = false;
+            _statsController.RegenStamina();
             GroundedChanged?.Invoke(true, Mathf.Abs(_frameVelocity.y));
         }
         // Left the Ground
@@ -138,6 +144,7 @@ public class PlayerController : MonoBehaviour
         _bufferedJumpUsable = false;
         _coyoteUsable = false;
         _frameVelocity.y = _stats.JumpPower;
+        _statsController.ConsumeStamina(10f);
         Jumped?.Invoke();
     }
 
@@ -186,6 +193,58 @@ public class PlayerController : MonoBehaviour
         if (_stats == null) Debug.LogWarning("Please assign a ScriptableStats asset to the Player Controller's Stats slot", this);
     }
 #endif
+
+    private void OnDrawGizmos()
+    {
+        if (_col == null) _col = GetComponent<CapsuleCollider2D>();
+        if (_stats == null || _col == null) return;
+
+        // 1. Usamos el centro de los bounds (que ya incluye la posición del objeto + offset del collider)
+        Vector2 startCenter = _col.bounds.center;
+        Vector2 castSize = _col.size;
+        float distance = _stats.GrounderDistance;
+        Vector2 endCenter = startCenter + Vector2.down * distance;
+
+        // 2. Dibujar Cápsula de Origen (donde está el collider actualmente)
+        Gizmos.color = _grounded ? Color.green : Color.red;
+        DrawCapsule(startCenter, castSize, _col.direction);
+
+        // 3. Dibujar Cápsula de Destino (el área que busca el suelo)
+        // Reducimos un poco el tamaño visual para que se note el barrido
+        Gizmos.color = Color.cyan;
+        DrawCapsule(endCenter, castSize, _col.direction);
+
+        // 4. Dibujar línea de trayectoria
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawLine(startCenter, endCenter);
+    }
+
+    private void DrawCapsule(Vector2 center, Vector2 size, CapsuleDirection2D direction)
+    {
+        float radius = size.x / 2f;
+        float cylinderHeight = Mathf.Max(0, size.y - size.x);
+
+        if (direction == CapsuleDirection2D.Vertical)
+        {
+            Vector3 topSphere = (Vector3)center + Vector3.up * (cylinderHeight / 2f);
+            Vector3 bottomSphere = (Vector3)center + Vector3.down * (cylinderHeight / 2f);
+
+            Gizmos.DrawWireSphere(topSphere, radius);
+            Gizmos.DrawWireSphere(bottomSphere, radius);
+            Gizmos.DrawLine(topSphere + Vector3.left * radius, bottomSphere + Vector3.left * radius);
+            Gizmos.DrawLine(topSphere + Vector3.right * radius, bottomSphere + Vector3.right * radius);
+        }
+        else // Horizontal
+        {
+            Vector3 rightSphere = (Vector3)center + Vector3.right * (cylinderHeight / 2f);
+            Vector3 leftSphere = (Vector3)center + Vector3.left * (cylinderHeight / 2f);
+
+            Gizmos.DrawWireSphere(rightSphere, radius);
+            Gizmos.DrawWireSphere(leftSphere, radius);
+            Gizmos.DrawLine(rightSphere + Vector3.up * radius, leftSphere + Vector3.up * radius);
+            Gizmos.DrawLine(rightSphere + Vector3.down * radius, leftSphere + Vector3.down * radius);
+        }
+    }
 }
 
 public struct FrameInput
