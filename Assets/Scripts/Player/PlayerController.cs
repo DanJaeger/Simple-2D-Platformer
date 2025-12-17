@@ -24,6 +24,7 @@ public class PlayerController : MonoBehaviour
     #endregion
 
     private float _time;
+    private bool _isControlDisabled = false;
 
     private void Awake()
     {
@@ -65,6 +66,12 @@ public class PlayerController : MonoBehaviour
 
     private void FixedUpdate()
     {
+        if (_isControlDisabled)
+        {
+            ApplyMovement(); // Mantiene la gravedad si es necesario, o déjalo vacío
+            return;
+        }
+
         CheckCollisions();
 
         HandleJump();
@@ -193,6 +200,17 @@ public class PlayerController : MonoBehaviour
         if (_stats == null) Debug.LogWarning("Please assign a ScriptableStats asset to the Player Controller's Stats slot", this);
     }
 #endif
+
+    public void SetControl(bool state)
+    {
+        _isControlDisabled = !state;
+        if (_isControlDisabled)
+        {
+            // Detener al jugador inmediatamente para que no "deslice" en la cinemática
+            _frameVelocity = Vector2.zero;
+            _rb.linearVelocity = Vector2.zero;
+        }
+    }
 
     private void OnDrawGizmos()
     {
