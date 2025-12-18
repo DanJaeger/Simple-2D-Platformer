@@ -170,7 +170,7 @@ public class PlayerController : MonoBehaviour
         _bufferedJumpUsable = false;
         _coyoteUsable = false;
         _frameVelocity.y = _stats.JumpPower;
-        _statsController.ConsumeStamina(10f);
+        _statsController.ConsumeStamina(_stats.JumpStaminaCost);
         Jumped?.Invoke();
     }
 

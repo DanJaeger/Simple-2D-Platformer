@@ -4,82 +4,99 @@ using UnityEngine;
 public class CharacterStatsSO : ScriptableObject
 {
     #region Health and Stamina
-    public float maxHealth = 100f;
-    public float initialHealth = 100f;
-    public float maxStamina = 100f;
-    public float initialStamina = 100f;
+    [Header("HEALTH & STAMINA")]
+    [Tooltip("The maximum health points the player can reach.")]
+    public float MaxHealth = 100f;
+
+    [Tooltip("The health points the player starts with when the game begins.")]
+    public float InitialHealth = 100f;
+
+    [Tooltip("The maximum stamina points available for actions like dashing or jumping.")]
+    public float MaxStamina = 100f;
+
+    [Tooltip("The stamina points the player starts with when the game begins.")]
+    public float InitialStamina = 100f;
+
+    [Header("STAMINA COSTS")]
+    [Tooltip("The amount of stamina consumed each time the player performs a jump.")]
+    public float JumpStaminaCost = 10f;
+
+    [Tooltip("The amount of stamina consumed each time the player performs a dash.")]
+    public float DashStaminaCost = 20f;
     #endregion
 
-    #region Movement
+    #region Physics Layers
     [Header("LAYERS")]
-    [Tooltip("Set this to the layer your player is on")]
+    [Tooltip("The LayerMask used to identify the player. Used to exclude the player's own collider from physics checks.")]
     public LayerMask PlayerLayer;
+    #endregion
 
+    #region Input Settings
     [Header("INPUT")]
-    [Tooltip("Makes all Input snap to an integer. Prevents gamepads from walking slowly. Recommended value is true to ensure gamepad/keybaord parity.")]
+    [Tooltip("If enabled, movement input will snap to -1, 0, or 1. Useful for consistent behavior between keyboard and analog controllers.")]
     public bool SnapInput = true;
 
-    [Tooltip("Minimum input required before you mount a ladder or climb a ledge. Avoids unwanted climbing using controllers"), Range(0.01f, 0.99f)]
+    [Tooltip("Minimum vertical input required to register an action (climbing, etc). Prevents accidental inputs from stick drift."), Range(0.01f, 0.99f)]
     public float VerticalDeadZoneThreshold = 0.3f;
 
-    [Tooltip("Minimum input required before a left or right is recognized. Avoids drifting with sticky controllers"), Range(0.01f, 0.99f)]
+    [Tooltip("Minimum horizontal input required to register movement. Prevents character drifting due to hardware stick drift."), Range(0.01f, 0.99f)]
     public float HorizontalDeadZoneThreshold = 0.1f;
+    #endregion
 
+    #region Movement Settings
     [Header("MOVEMENT")]
-    [Tooltip("The top horizontal movement speed")]
-    public float MaxSpeed = 14;
+    [Tooltip("The maximum horizontal velocity the player can achieve.")]
+    public float MaxSpeed = 14f;
 
-    [Tooltip("The player's capacity to gain horizontal speed")]
-    public float Acceleration = 120;
+    [Tooltip("How quickly the player reaches Max Speed. High values result in snappier movement.")]
+    public float Acceleration = 120f;
 
-    [Tooltip("The pace at which the player comes to a stop")]
-    public float GroundDeceleration = 60;
+    [Tooltip("How quickly the player slows down while touching the ground after releasing input.")]
+    public float GroundDeceleration = 60f;
 
-    [Tooltip("Deceleration in air only after stopping input mid-air")]
-    public float AirDeceleration = 30;
+    [Tooltip("How quickly the player slows down while in the air after releasing input.")]
+    public float AirDeceleration = 30f;
 
-    [Tooltip("A constant downward force applied while grounded. Helps on slopes"), Range(0f, -10f)]
+    [Tooltip("A constant downward force applied while grounded to ensure the player sticks to slopes and uneven terrain."), Range(0f, -10f)]
     public float GroundingForce = -1.5f;
 
-    [Tooltip("The detection distance for grounding and roof detection"), Range(0f, 0.5f)]
+    [Tooltip("The distance the physics system checks below and above the collider to detect ground or ceilings."), Range(0f, 0.5f)]
     public float GrounderDistance = 0.05f;
+    #endregion
 
+    #region Jump Settings
     [Header("JUMP")]
-    [Tooltip("The immediate velocity applied when jumping")]
-    public float JumpPower = 36;
+    [Tooltip("The initial upward velocity applied at the moment of jumping.")]
+    public float JumpPower = 18f;
 
-    [Tooltip("The maximum vertical movement speed")]
-    public float MaxFallSpeed = 40;
+    [Tooltip("The terminal velocity or maximum speed at which the player can fall.")]
+    public float MaxFallSpeed = 40f;
 
-    [Tooltip("The player's capacity to gain fall speed. a.k.a. In Air Gravity")]
-    public float FallAcceleration = 110;
+    [Tooltip("The rate at which the player gains downward velocity while in the air (Gravity).")]
+    public float FallAcceleration = 50f;
 
-    [Tooltip("The gravity multiplier added when jump is released early")]
-    public float JumpEndEarlyGravityModifier = 3;
+    [Tooltip("The gravity multiplier applied when the jump button is released before reaching the apex. Allows for variable jump heights.")]
+    public float JumpEndEarlyGravityModifier = 3f;
 
-    [Tooltip("The time before coyote jump becomes unusable. Coyote jump allows jump to execute even after leaving a ledge")]
-    public float CoyoteTime = .15f;
+    [Tooltip("The grace period (in seconds) that allows a player to jump after walking off a ledge.")]
+    public float CoyoteTime = 0.15f;
 
-    [Tooltip("The amount of time we buffer a jump. This allows jump input before actually hitting the ground")]
-    public float JumpBuffer = .2f;
+    [Tooltip("How long (in seconds) the game remembers a jump input before hitting the ground. Makes the controls feel more responsive.")]
+    public float JumpBuffer = 0.2f;
+    #endregion
 
+    #region Dash Settings
     [Header("DASH")]
-    [Tooltip("La fuerza/velocidad instantánea que alcanza el personaje al iniciar el dash.")]
+    [Tooltip("The instantaneous velocity applied to the player during a dash.")]
     public float DashPower = 20f;
 
-    [Tooltip("Cuánto tiempo (en segundos) dura el estado de dash y la gravedad cero.")]
+    [Tooltip("The duration (in seconds) that the dash lasts, during which gravity is typically ignored.")]
     public float DashDuration = 0.2f;
 
-    [Tooltip("Tiempo de espera antes de poder usar el dash nuevamente.")]
+    [Tooltip("The cooldown period (in seconds) before the dash can be used again.")]
     public float DashCooldown = 0.5f;
 
-    [Tooltip("¿Se puede usar el dash en el aire? (Estilo Ori/Celeste)")]
+    [Tooltip("If enabled, the player can perform a dash while not grounded (Ori/Celeste style).")]
     public bool CanDashInAir = true;
-
-    [Header("STAMINA COST")]
-    [Tooltip("Cantidad de energía que consume realizar un dash.")]
-    public float DashStaminaCost = 20f;
-
-
     #endregion
 }
