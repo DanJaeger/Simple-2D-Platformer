@@ -26,6 +26,7 @@ public class InputManager : MonoBehaviour
     public Vector2 PlayerMovementInput { get; private set; }
     public bool Interact { get; private set; }
     public bool Jump { get; private set; }
+    public bool Dash { get; private set; }
 
     private void Awake()
     {
@@ -62,6 +63,11 @@ public class InputManager : MonoBehaviour
         _playerInput.Locomotion.Jump.started += OnJumpInput;
         _playerInput.Locomotion.Jump.performed += OnJumpInput;
         _playerInput.Locomotion.Jump.canceled += OnJumpInput;
+
+        // Dash
+        _playerInput.Locomotion.Dash.started += OnDashInput;
+        _playerInput.Locomotion.Dash.performed += OnDashInput;
+        _playerInput.Locomotion.Dash.canceled += OnDashInput;
     }
 
 
@@ -89,6 +95,13 @@ public class InputManager : MonoBehaviour
         Jump = context.ReadValueAsButton();
     }
 
+    /// <summary>
+    /// Handles Dash input (Left Shift).
+    /// </summary>
+    private void OnDashInput(InputAction.CallbackContext context)
+    {
+        Dash = context.ReadValueAsButton();
+    }
     private void OnEnable()
     {
         _playerInput.Locomotion.Enable();

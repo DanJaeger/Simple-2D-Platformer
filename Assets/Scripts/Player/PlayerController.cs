@@ -1,5 +1,5 @@
 using System;
-using Unity.VisualScripting;
+using System.Collections;
 using UnityEngine;
 
 [RequireComponent(typeof(InputManager))]
@@ -20,6 +20,12 @@ public class PlayerController : MonoBehaviour
     public Vector2 FrameInput => _frameInput.Move;
     public event Action<bool, float> GroundedChanged;
     public event Action Jumped;
+
+    public event Action Dashed;
+    private bool _dashToConsume;
+    private bool _canDash = true;
+    private bool _isDashing;
+    private float _timeDashWasPressed;
 
     #endregion
 
@@ -48,6 +54,7 @@ public class PlayerController : MonoBehaviour
         {
             JumpDown = Input.GetButtonDown("Jump") || InputManager.Instance.Jump,
             JumpHeld = Input.GetButton("Jump") || InputManager.Instance.Jump,
+            DashDown = Input.GetKeyDown(KeyCode.LeftShift) || InputManager.Instance.Dash,
             Move = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"))
         };
 
@@ -62,6 +69,11 @@ public class PlayerController : MonoBehaviour
             _jumpToConsume = true;
             _timeJumpWasPressed = _time;
         }
+
+        if (_frameInput.DashDown && _canDash)
+        {
+            _dashToConsume = true;
+        }
     }
 
     private void FixedUpdate()
@@ -74,8 +86,15 @@ public class PlayerController : MonoBehaviour
 
         CheckCollisions();
 
+        if (_isDashing)
+        {
+            // Si estamos dasheando, saltamos el resto de la lógica física
+            ApplyMovement();
+            return;
+        }
+
+        HandleDash();
         HandleJump();
-        //HandleDash();
         HandleDirection();
         HandleGravity();
 
@@ -192,6 +211,41 @@ public class PlayerController : MonoBehaviour
 
     #endregion
 
+    #region Dashing
+    private void HandleDash()
+    {
+        if (_dashToConsume && _canDash)
+        {
+            StartCoroutine(ExecuteDash());
+        }
+        _dashToConsume = false;
+    }
+
+    private IEnumerator ExecuteDash()
+    {
+        _canDash = false;
+        _isDashing = true;
+        _statsController.ConsumeStamina(_stats.DashStaminaCost);
+        Dashed?.Invoke();
+
+        // Calculamos dirección del dash (si no hay input, usamos hacia donde mira el personaje)
+        float dashDir = _frameInput.Move.x != 0 ? Mathf.Sign(_frameInput.Move.x) : transform.localScale.x;
+
+        // Seteamos la velocidad del dash
+        _frameVelocity = new Vector2(dashDir * _stats.DashPower, 0);
+
+        // Durante el dash, el drag o la gravedad no deben afectarnos
+        yield return new WaitForSeconds(_stats.DashDuration);
+
+        _isDashing = false;
+
+        // Cooldown
+        yield return new WaitForSeconds(_stats.DashCooldown);
+        _canDash = true;
+    }
+
+    #endregion
+
     private void ApplyMovement() => _rb.linearVelocity = _frameVelocity;
 
 #if UNITY_EDITOR
@@ -269,13 +323,6 @@ public struct FrameInput
 {
     public bool JumpDown;
     public bool JumpHeld;
+    public bool DashDown;
     public Vector2 Move;
-}
-
-public interface IPlayerController
-{
-    public event Action<bool, float> GroundedChanged;
-
-    public event Action Jumped;
-    public Vector2 FrameInput { get; }
 }

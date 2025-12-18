@@ -34,3 +34,8 @@ MonoBehaviour:
   JumpEndEarlyGravityModifier: 3
   CoyoteTime: 0.15
   JumpBuffer: 0.2
+  DashPower: 20
+  DashDuration: 0.2
+  DashCooldown: 0.5
+  CanDashInAir: 1
+  DashStaminaCost: 20

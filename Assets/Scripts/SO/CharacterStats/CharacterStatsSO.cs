@@ -62,5 +62,24 @@ public class CharacterStatsSO : ScriptableObject
 
     [Tooltip("The amount of time we buffer a jump. This allows jump input before actually hitting the ground")]
     public float JumpBuffer = .2f;
+
+    [Header("DASH")]
+    [Tooltip("La fuerza/velocidad instantánea que alcanza el personaje al iniciar el dash.")]
+    public float DashPower = 20f;
+
+    [Tooltip("Cuánto tiempo (en segundos) dura el estado de dash y la gravedad cero.")]
+    public float DashDuration = 0.2f;
+
+    [Tooltip("Tiempo de espera antes de poder usar el dash nuevamente.")]
+    public float DashCooldown = 0.5f;
+
+    [Tooltip("¿Se puede usar el dash en el aire? (Estilo Ori/Celeste)")]
+    public bool CanDashInAir = true;
+
+    [Header("STAMINA COST")]
+    [Tooltip("Cantidad de energía que consume realizar un dash.")]
+    public float DashStaminaCost = 20f;
+
+
     #endregion
 }
