@@ -11,10 +11,10 @@ public class CharacterStatsController : MonoBehaviour
     private void Awake()
     {
         model = new CharacterStatsModel(
-            statsTemplate.initialHealth,
-            statsTemplate.initialStamina,
-            statsTemplate.maxHealth,
-            statsTemplate.maxStamina);
+            statsTemplate.InitialHealth,
+            statsTemplate.InitialStamina,
+            statsTemplate.MaxHealth,
+            statsTemplate.MaxStamina);
     }
 
     // Método para que la Vista se suscriba al Modelo
@@ -37,5 +37,9 @@ public class CharacterStatsController : MonoBehaviour
         else {
             RegenStaminaCoroutine = StartCoroutine(model.RegenStaminaRoutine());
         }
+    }
+    public bool HasEnoughStamina(float cost)
+    {
+        return model.Stamina >= cost;
     }
 }

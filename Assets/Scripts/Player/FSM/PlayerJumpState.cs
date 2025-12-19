@@ -8,26 +8,43 @@ public class PlayerJumpState : PlayerBaseState, IRootState
     }
     public override void CheckSwitchStates()
     {
-        if (Context.CharacterController.isGrounded)
+        if (Context.Grounded && Context.FrameVelocity.y <= -0.1f)
         {
             SwitchState(Factory.Grounded());
+        }
+        else if (Context.FrameVelocity.y <= 0)
+        {
+            SwitchState(Factory.Fall());
         }
     }
 
     public override void EnterState()
     {
-        HandleJump();
+        Context.JumpToConsume = false;
+        Context.UseJumpBuffer();
+        Context.UseCoyote();
+
+        Context.FrameVelocity = new Vector2(Context.FrameVelocity.x, Context.Stats.JumpPower);
+
+        ExecuteJump();
         InitializeSubState();
     }
 
     public override void ExitState()
     {
-        Context.Anim.SetBool(Context.IsJumpingHash, false);
+        Context.StatsController.RegenStamina();
     }
 
     public override void InitializeSubState()
     {
-
+        if (Mathf.Abs(Context.FrameInput.Move.x) < 0.01f)
+        {
+            SetSubState(Factory.Idle());
+        }
+        else
+        {
+            SetSubState(Factory.Run());
+        }
     }
 
     public override void UpdateState()
@@ -35,33 +52,32 @@ public class PlayerJumpState : PlayerBaseState, IRootState
         HandleGravity();
         CheckSwitchStates();
     }
-    void HandleJump()
+    private void ExecuteJump()
     {
-        Context.IsJumping = true;
-        Context.CurrentMovementY = Context.InitialJumpVelocity;
-        Context.AppliedMovementY = Context.InitialJumpVelocity;
-        Context.Anim.SetBool(Context.IsJumpingHash, true);
-    }
-    public void HandleGravity()
-    {
-        bool isFalling;
-        float fallMultiplier = 2.0f;
-        if (Context.HoldJump)
-            isFalling = Context.CurrentMovementY <= 0 || !Context.IsJumpPressed;
-        else
-            isFalling = Context.CurrentMovementY <= 0;
+        // Aplicamos la fuerza de salto usando tus Stats
+        float jumpVelocity = Context.Stats.JumpPower;
+        Context.FrameVelocity = new Vector2(Context.FrameVelocity.x, jumpVelocity);
 
-        if (isFalling)
+        // Consumimos estamina y disparamos el evento (Patrón Observer)
+        Context.StatsController.ConsumeStamina(Context.Stats.JumpStaminaCost);
+        Context.InvokeJumpEvent();
+    }
+    private void HandleGravity()
+    {
+        var inAirGravity = Context.Stats.FallAcceleration;
+
+        if (!Context.FrameInput.JumpHeld && Context.FrameVelocity.y > 0)
         {
-            float previousYVelocity = Context.CurrentMovementY;
-            Context.CurrentMovementY = Context.CurrentMovementY + (Context.Gravity * fallMultiplier * Time.deltaTime);
-            Context.AppliedMovementY = Mathf.Max((previousYVelocity + Context.CurrentMovementY) * 0.5f, -10.0f);
+            inAirGravity *= Context.Stats.JumpEndEarlyGravityModifier;
         }
-        else
-        {
-            float previousYVelocity = Context.CurrentMovementY;
-            Context.CurrentMovementY = Context.CurrentMovementY + (Context.Gravity * Time.deltaTime);
-            Context.AppliedMovementY = (previousYVelocity + Context.CurrentMovementY) * 0.5f;
-        }
+
+        // USA SIEMPRE fixedDeltaTime dentro de FixedUpdate para cálculos de velocidad
+        float newY = Mathf.MoveTowards(
+            Context.FrameVelocity.y,
+            -Context.Stats.MaxFallSpeed,
+            inAirGravity * Time.fixedDeltaTime
+        );
+
+        Context.FrameVelocity = new Vector2(Context.FrameVelocity.x, newY);
     }
 }

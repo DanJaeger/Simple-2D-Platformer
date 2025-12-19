@@ -8,7 +8,7 @@ public class PlayerRunState : PlayerBaseState
     : base(currentContext, playerStateFactory) { }
     public override void CheckSwitchStates()
     {
-        if (!Context.IsMovementPressed)
+        if (Mathf.Abs(Context.FrameInput.Move.x) < 0.01f)
         {
             SwitchState(Factory.Idle());
         }
@@ -16,9 +16,7 @@ public class PlayerRunState : PlayerBaseState
 
     public override void EnterState()
     {
-        Context.Anim.SetBool(Context.IsWalkingHash, false);
-        Context.Anim.SetBool(Context.IsRunningHash, true);
-        Context.CurrentSpeed = PlayerStateMachine.RunSpeed;
+        
     }
 
     public override void ExitState()
@@ -33,6 +31,19 @@ public class PlayerRunState : PlayerBaseState
 
     public override void UpdateState()
     {
+        Move();
         CheckSwitchStates();
+    }
+    private void Move()
+    {
+        // Extraemos la lógica de tu HandleDirection que tenías en el StateMachine
+        // Pero ahora solo la parte que aplica cuando HAY movimiento
+        float targetSpeed = Context.FrameInput.Move.x * Context.Stats.MaxSpeed;
+
+        // Accedemos a la variable interna del Contexto para modificar la velocidad
+        // Nota: Asegúrate de que _frameVelocity sea accesible (puedes hacerle un getter/setter o ponerla interna)
+        float newX = Mathf.MoveTowards(Context.FrameVelocity.x, targetSpeed, Context.Stats.Acceleration * Time.fixedDeltaTime);
+
+        Context.FrameVelocity = new Vector2(newX, Context.FrameVelocity.y);
     }
 }

@@ -4,7 +4,7 @@ using UnityEngine.Playables; // Para usar Timeline
 public class CinematicManager : MonoBehaviour
 {
     [SerializeField] private PlayableDirector _director;
-    [SerializeField] private PlayerController _player;
+    [SerializeField] private PlayerStateMachine _player;
 
     // Este método es el que arrastraremos al evento del Trigger
     public void PlayCutscene()
