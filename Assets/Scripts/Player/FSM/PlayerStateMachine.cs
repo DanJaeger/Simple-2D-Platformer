@@ -2,79 +2,87 @@ using System;
 using System.Collections;
 using UnityEngine;
 
+/// <summary>
+/// Controlador principal del jugador basado en una Máquina de Estados Jerárquica (HFSM).
+/// Actúa como el centro de datos (Hub) y motor físico, delegando la lógica a los estados.
+/// </summary>
+[RequireComponent(typeof(Rigidbody2D), typeof(CapsuleCollider2D))]
 public class PlayerStateMachine : MonoBehaviour
 {
-    [Header("Settings")]
+    #region Serialized Fields
+    [Header("Configuration")]
+    [Tooltip("ScriptableObject que contiene los ajustes físicos del personaje.")]
     [SerializeField] private CharacterStatsSO _stats;
+    #endregion
 
-    // Components
+    #region Private Components
     private Rigidbody2D _rb;
     private CapsuleCollider2D _col;
     private CharacterStatsController _statsController;
-
-    // State Machine
-    private PlayerBaseState _currentState;
     private PlayerStateFactory _states;
+    private PlayerBaseState _currentState;
+    #endregion
 
-    // Internal Data
+    #region Internal State Data
     private FrameInput _frameInput;
     private Vector2 _frameVelocity;
     private bool _cachedQueryStartInColliders;
     private float _time;
-    private bool _isControlDisabled = false;
+    private bool _isControlDisabled;
 
-    // Detection & Timers
+    // Detection & Flags
     private bool _grounded;
-    private float _frameLeftGrounded = float.MinValue;
-    private float _timeJumpWasPressed;
     private bool _canDash = true;
     private bool _isDashing;
-
-    // Consumables (Flags para los estados)
     private bool _jumpToConsume;
     private bool _dashToConsume;
     private bool _bufferedJumpUsable;
     private bool _coyoteUsable;
 
-    #region Properties & Interface
+    // Timers
+    private float _frameLeftGrounded = float.MinValue;
+    private float _timeJumpWasPressed;
+    #endregion
 
-    // Events
+    #region Interface & Events
     public event Action<bool, float> GroundedChanged;
     public event Action Jumped;
     public event Action Dashed;
 
-    // Getters & Setters para los Estados
+    // Propiedades expuestas para los estados
     public PlayerBaseState CurrentState { get => _currentState; set => _currentState = value; }
     public CharacterStatsSO Stats => _stats;
     public CharacterStatsController StatsController => _statsController;
     public Vector2 FrameVelocity { get => _frameVelocity; set => _frameVelocity = value; }
-    public FrameInput FrameInput => _frameInput;
-
+    public FrameInput FrameInputRef => _frameInput;
     public bool Grounded => _grounded;
     public bool IsDashing { get => _isDashing; set => _isDashing = value; }
     public bool CanDash { get => _canDash; set => _canDash = value; }
     public bool JumpToConsume { get => _jumpToConsume; set => _jumpToConsume = value; }
     public bool DashToConsume { get => _dashToConsume; set => _dashToConsume = value; }
 
-    // Helper Properties
+    // Helpers de tiempo para Salto y Coyote
     public bool HasBufferedJump => _bufferedJumpUsable && _time < _timeJumpWasPressed + _stats.JumpBuffer;
     public bool CanUseCoyote => _coyoteUsable && !_grounded && _time < _frameLeftGrounded + _stats.CoyoteTime;
-
     #endregion
 
+    #region Initialization
     private void Awake()
     {
         _rb = GetComponent<Rigidbody2D>();
         _col = GetComponent<CapsuleCollider2D>();
         _statsController = GetComponent<CharacterStatsController>();
+
+        // Optimización: Cachear configuración de colisiones de Unity
         _cachedQueryStartInColliders = Physics2D.queriesStartInColliders;
 
-        // Inicializar FSM
         _states = new PlayerStateFactory(this);
-        _currentState = _states.Grounded(); // Estado inicial
+        _currentState = _states.Grounded();
         _currentState.EnterState();
     }
+    #endregion
 
+    #region Loop Principal
     private void Update()
     {
         if (_isControlDisabled) return;
@@ -87,19 +95,20 @@ public class PlayerStateMachine : MonoBehaviour
     {
         if (_isControlDisabled)
         {
-            _frameVelocity = Vector2.zero;
-            _rb.linearVelocity = Vector2.zero;
+            StopMovementImmediate();
             return;
         }
 
         CheckCollisions();
-
-        // Ejecutar lógica de la FSM (incluye sub-estados)
-        _currentState.UpdateStates();
-
+        _currentState.UpdateStates(); // Ejecuta lógica de la jerarquía de estados
         ApplyMovement();
     }
+    #endregion
 
+    #region Input Logic
+    /// <summary>
+    /// Recolecta el input del jugador y aplica normalización o Snapping según los stats.
+    /// </summary>
     private void GatherInput()
     {
         _frameInput = new FrameInput
@@ -127,7 +136,12 @@ public class PlayerStateMachine : MonoBehaviour
             _dashToConsume = true;
         }
     }
+    #endregion
 
+    #region Physics & Collisions
+    /// <summary>
+    /// Realiza detecciones mediante CapsuleCast para determinar estado de suelo y techo.
+    /// </summary>
     private void CheckCollisions()
     {
         Physics2D.queriesStartInColliders = false;
@@ -137,32 +151,42 @@ public class PlayerStateMachine : MonoBehaviour
 
         if (ceilingHit) _frameVelocity.y = Mathf.Min(0, _frameVelocity.y);
 
-        if (!_grounded && groundHit)
+        HandleGroundTransition(groundHit);
+
+        Physics2D.queriesStartInColliders = _cachedQueryStartInColliders;
+    }
+
+    private void HandleGroundTransition(bool groundHit)
+    {
+        if (!_grounded && groundHit) // Aterrizando
         {
             _grounded = true;
             _coyoteUsable = true;
             _bufferedJumpUsable = true;
-
             _jumpToConsume = false;
             _timeJumpWasPressed = 0;
 
             _statsController.RegenStamina();
             GroundedChanged?.Invoke(true, Mathf.Abs(_frameVelocity.y));
         }
-        else if (_grounded && !groundHit)
+        else if (_grounded && !groundHit) // Dejando el suelo
         {
             _grounded = false;
             _frameLeftGrounded = _time;
             GroundedChanged?.Invoke(false, 0);
         }
-
-        Physics2D.queriesStartInColliders = _cachedQueryStartInColliders;
     }
 
     private void ApplyMovement() => _rb.linearVelocity = _frameVelocity;
 
-    #region External Triggers (Called by States)
+    private void StopMovementImmediate()
+    {
+        _frameVelocity = Vector2.zero;
+        _rb.linearVelocity = Vector2.zero;
+    }
+    #endregion
 
+    #region Public State API
     public void UseJumpBuffer() => _bufferedJumpUsable = false;
     public void UseCoyote() => _coyoteUsable = false;
     public void InvokeJumpEvent() => Jumped?.Invoke();
@@ -170,7 +194,6 @@ public class PlayerStateMachine : MonoBehaviour
 
     public void StartDashCooldown()
     {
-        // Si ya hay un cooldown corriendo, no iniciamos otro
         StopCoroutine(nameof(DashCooldownRoutine));
         StartCoroutine(DashCooldownRoutine());
     }
@@ -182,48 +205,43 @@ public class PlayerStateMachine : MonoBehaviour
         _canDash = true;
     }
 
+    /// <summary>
+    /// Activa o desactiva el control del jugador. Útil para cinemáticas o menús.
+    /// </summary>
     public void SetControl(bool state)
     {
         _isControlDisabled = !state;
 
-        if (_isControlDisabled) // ENTRANDO A CINEMÁTICA
+        if (_isControlDisabled)
         {
-            // 1. Matamos la velocidad interna y física
-            _frameVelocity = Vector2.zero;
-            if (_rb != null) _rb.linearVelocity = Vector2.zero;
-
-            // 2. IMPORTANTE: Forzamos el cambio de estado a Idle 
-            // para que el DashState se cierre y ejecute su ExitState()
-            _currentState = _states.Grounded();
-            _currentState.EnterState();
-
-            // 3. Lo hacemos cinemático para que nada lo mueva
-            if (_rb != null) _rb.bodyType = RigidbodyType2D.Kinematic;
+            StopMovementImmediate();
+            _rb.bodyType = RigidbodyType2D.Kinematic;
+            ResetToIdle();
         }
-        else // AL SALIR DE LA CINEMÁTICA
+        else
         {
-            // 1. Limpieza de velocidades residuales
-            _frameVelocity = Vector2.zero;
-            if (_rb != null)
-            {
-                _rb.linearVelocity = Vector2.zero;
-                _rb.bodyType = RigidbodyType2D.Dynamic;
-            }
-
-            // 2. RESETEAR EL DASH (Aquí está la solución)
-            IsDashing = false;    // Nos aseguramos de que no crea que está dasheando
-            CanDash = true;       // Forzamos que el dash esté disponible de nuevo
-            DashToConsume = false; // Limpiamos cualquier pulsación vieja
-
-            // 3. Reiniciar FSM
-            _currentState = _states.Grounded();
-            _currentState.EnterState();
+            _rb.bodyType = RigidbodyType2D.Dynamic;
+            ResetSkills();
+            ResetToIdle();
         }
     }
 
+    private void ResetToIdle()
+    {
+        _currentState = _states.Grounded();
+        _currentState.EnterState();
+    }
+
+    private void ResetSkills()
+    {
+        _isDashing = false;
+        _canDash = true;
+        _dashToConsume = false;
+        _jumpToConsume = false;
+    }
     #endregion
 
-    #region Gizmos
+    #region Debug
     private void OnDrawGizmos()
     {
         if (_col == null) return;
@@ -231,4 +249,12 @@ public class PlayerStateMachine : MonoBehaviour
         Gizmos.DrawWireCube(_col.bounds.center + Vector3.down * _stats.GrounderDistance, _col.size);
     }
     #endregion
+}
+
+public struct FrameInput
+{
+    public bool JumpDown;
+    public bool JumpHeld;
+    public bool DashDown;
+    public Vector2 Move;
 }

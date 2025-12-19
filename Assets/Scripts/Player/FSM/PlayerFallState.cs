@@ -1,15 +1,21 @@
 using UnityEngine;
 
-public class PlayerFallState : PlayerBaseState, IRootState
+/// <summary>
+/// Estado raíz que gestiona al jugador mientras está en el aire con velocidad vertical descendente.
+/// Maneja la gravedad de caída, el Coyote Time y las transiciones de Dash aéreo.
+/// </summary>
+public class PlayerFallState : PlayerBaseState
 {
     public PlayerFallState(PlayerStateMachine currentContext, PlayerStateFactory playerStateFactory)
-       : base(currentContext, playerStateFactory)
+        : base(currentContext, playerStateFactory)
     {
         IsRootState = true;
     }
 
+    #region State Lifecycle
     public override void EnterState()
     {
+        // Permitimos que el jugador mantenga control horizontal (Idle/Run) durante la caída
         InitializeSubState();
     }
 
@@ -19,49 +25,41 @@ public class PlayerFallState : PlayerBaseState, IRootState
         CheckSwitchStates();
     }
 
+    public override void ExitState()
+    {
+        // Limpieza opcional al aterrizar o cambiar de estado
+    }
+    #endregion
+
+    #region Logic
+    /// <summary>
+    /// Evalúa las prioridades de transición en el aire: 1. Suelo, 2. Dash, 3. Coyote Jump.
+    /// </summary>
     public override void CheckSwitchStates()
     {
-        // 1. Si tocamos el suelo, volvemos a Grounded
+        // 1. PRIORIDAD: ATERRIZAJE
         if (Context.Grounded)
         {
             SwitchState(Factory.Grounded());
+            return;
         }
-        // 2. Permitir Dash en el aire (si tus stats lo permiten)
-        else if (Context.DashToConsume && Context.CanDash && Context.Stats.CanDashInAir)
-        {
-            if (Context.StatsController.HasEnoughStamina(Context.Stats.DashStaminaCost))
-            {
-                SwitchState(Factory.Dash());
-            }
-            else
-            {
-                Context.DashToConsume = false;
-            }
-        }
-        // 3. Coyote Time: Si presionas salto justo al empezar a caer
-        else if (Context.JumpToConsume && Context.CanUseCoyote)
-        {
-            if (Context.StatsController.HasEnoughStamina(Context.Stats.JumpStaminaCost))
-            {
-                SwitchState(Factory.Jump());
-            }
-            else
-            {
-                Context.JumpToConsume = false;
-                Context.UseJumpBuffer();
-            }
-        }
-    }
 
-    public override void ExitState()
-    {
+        // 2. PRIORIDAD: DASH AÉREO
+        if (Context.DashToConsume && Context.CanDash && Context.Stats.CanDashInAir)
+        {
+            if (HandleDashAttempt()) return;
+        }
 
+        // 3. PRIORIDAD: COYOTE TIME (Salto justo después de caer)
+        if (Context.JumpToConsume && Context.CanUseCoyote)
+        {
+            HandleCoyoteJumpAttempt();
+        }
     }
 
     public override void InitializeSubState()
     {
-        // Permitimos control horizontal durante la caída
-        if (Mathf.Abs(Context.FrameInput.Move.x) < 0.01f)
+        if (Mathf.Abs(Context.FrameInputRef.Move.x) < 0.01f)
         {
             SetSubState(Factory.Idle());
         }
@@ -71,9 +69,11 @@ public class PlayerFallState : PlayerBaseState, IRootState
         }
     }
 
+    /// <summary>
+    /// Aplica la aceleración de caída constante hasta alcanzar la velocidad terminal definida.
+    /// </summary>
     private void HandleGravity()
     {
-        // Aplicamos la aceleración de caída (gravedad) definida en tus stats
         float speedWithGravity = Mathf.MoveTowards(
             Context.FrameVelocity.y,
             -Context.Stats.MaxFallSpeed,
@@ -82,4 +82,33 @@ public class PlayerFallState : PlayerBaseState, IRootState
 
         Context.FrameVelocity = new Vector2(Context.FrameVelocity.x, speedWithGravity);
     }
+    #endregion
+
+    #region Helpers (Private)
+    private bool HandleDashAttempt()
+    {
+        if (Context.StatsController.HasEnoughStamina(Context.Stats.DashStaminaCost))
+        {
+            SwitchState(Factory.Dash());
+            return true;
+        }
+
+        Context.DashToConsume = false;
+        return false;
+    }
+
+    private void HandleCoyoteJumpAttempt()
+    {
+        if (Context.StatsController.HasEnoughStamina(Context.Stats.JumpStaminaCost))
+        {
+            SwitchState(Factory.Jump());
+        }
+        else
+        {
+            // Fallo por estamina: reseteamos flags para evitar saltos "fantasma"
+            Context.JumpToConsume = false;
+            Context.UseJumpBuffer();
+        }
+    }
+    #endregion
 }

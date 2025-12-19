@@ -1,52 +1,53 @@
-using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
 
-enum PlayerStates
+/// <summary>
+/// Listado de estados disponibles para el jugador.
+/// Facilita el acceso mediante claves en lugar de strings o comparaciones de clase.
+/// </summary>
+public enum PlayerStates
 {
-    idle,
-    run,
-    grounded,
-    jump,
-    dash,
-    fall
+    Idle,
+    Run,
+    Grounded,
+    Jump,
+    Dash,
+    Fall
 }
+
+/// <summary>
+/// Fábrica encargada de instanciar y almacenar todos los estados del jugador.
+/// Utiliza el patrón Flyweight para reutilizar instancias y optimizar memoria.
+/// </summary>
 public class PlayerStateFactory
 {
-    PlayerStateMachine _context;
-    Dictionary<PlayerStates, PlayerBaseState> _states = new Dictionary<PlayerStates, PlayerBaseState>();
+    private readonly PlayerStateMachine _context;
+    private readonly Dictionary<PlayerStates, PlayerBaseState> _states = new();
+
+    /// <summary>
+    /// Inicializa la fábrica y pre-genera todos los estados posibles.
+    /// </summary>
+    /// <param name="currentContext">Referencia a la máquina de estados principal.</param>
     public PlayerStateFactory(PlayerStateMachine currentContext)
     {
         _context = currentContext;
-        _states[PlayerStates.idle] = new PlayerIdleState(_context, this);
-        _states[PlayerStates.run] = new PlayerRunState(_context, this);
-        _states[PlayerStates.jump] = new PlayerJumpState(_context, this);
-        _states[PlayerStates.dash] = new PlayerDashState(_context, this);
-        _states[PlayerStates.grounded] = new PlayerGroundedState(_context, this);
-        _states[PlayerStates.fall] = new PlayerFallState(_context, this);
+
+        // Registro de instancias
+        _states[PlayerStates.Idle] = new PlayerIdleState(_context, this);
+        _states[PlayerStates.Run] = new PlayerRunState(_context, this);
+        _states[PlayerStates.Jump] = new PlayerJumpState(_context, this);
+        _states[PlayerStates.Dash] = new PlayerDashState(_context, this);
+        _states[PlayerStates.Grounded] = new PlayerGroundedState(_context, this);
+        _states[PlayerStates.Fall] = new PlayerFallState(_context, this);
     }
-    public PlayerBaseState Idle()
-    {
-        return _states[PlayerStates.idle];
-    }
-    public PlayerBaseState Run()
-    {
-        return _states[PlayerStates.run];
-    }
-    public PlayerBaseState Jump()
-    {
-        return _states[PlayerStates.jump];
-    }
-    public PlayerBaseState Dash()
-    {
-        return _states[PlayerStates.dash];
-    }
-    public PlayerBaseState Grounded()
-    {
-        return _states[PlayerStates.grounded];
-    }
-    public PlayerBaseState Fall()
-    {
-        return _states[PlayerStates.fall];
-    }
+
+    #region Accessors (Getters)
+    // Estos métodos permiten a los estados transicionar usando Factory.Idle(), etc.
+
+    public PlayerBaseState Idle() => _states[PlayerStates.Idle];
+    public PlayerBaseState Run() => _states[PlayerStates.Run];
+    public PlayerBaseState Jump() => _states[PlayerStates.Jump];
+    public PlayerBaseState Dash() => _states[PlayerStates.Dash];
+    public PlayerBaseState Grounded() => _states[PlayerStates.Grounded];
+    public PlayerBaseState Fall() => _states[PlayerStates.Fall];
+    #endregion
 }

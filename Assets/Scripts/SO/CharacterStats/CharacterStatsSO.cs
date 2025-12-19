@@ -1,102 +1,106 @@
 using UnityEngine;
 
-[CreateAssetMenu(fileName = "NewCharacterStats", menuName = "SO/Character Stats")]
+/// <summary>
+/// Contenedor de datos que define todas las capacidades físicas y de recursos del jugador.
+/// Permite ajustar el comportamiento del personaje desde el Inspector sin modificar el código.
+/// </summary>
+[CreateAssetMenu(fileName = "NuevosStatsPersonaje", menuName = "SO/Stats de Personaje")]
 public class CharacterStatsSO : ScriptableObject
 {
-    #region Health and Stamina
-    [Header("HEALTH & STAMINA")]
-    [Tooltip("The maximum health points the player can reach.")]
+    #region Salud y Estamina
+    [Header("VIDA Y ESTAMINA")]
+    [Tooltip("Los puntos de vida máximos que el jugador puede alcanzar.")]
     public float MaxHealth = 100f;
 
-    [Tooltip("The health points the player starts with when the game begins.")]
+    [Tooltip("Los puntos de vida con los que el jugador comienza la partida.")]
     public float InitialHealth = 100f;
 
-    [Tooltip("The maximum stamina points available for actions like dashing or jumping.")]
+    [Tooltip("La cantidad máxima de estamina disponible para acciones como Dash o Salto.")]
     public float MaxStamina = 100f;
 
-    [Tooltip("The stamina points the player starts with when the game begins.")]
+    [Tooltip("La estamina con la que el jugador comienza la partida.")]
     public float InitialStamina = 100f;
 
-    [Header("STAMINA COSTS")]
-    [Tooltip("The amount of stamina consumed each time the player performs a jump.")]
+    [Header("COSTOS DE ESTAMINA")]
+    [Tooltip("Cantidad de estamina consumida cada vez que el jugador realiza un salto.")]
     public float JumpStaminaCost = 10f;
 
-    [Tooltip("The amount of stamina consumed each time the player performs a dash.")]
+    [Tooltip("Cantidad de estamina consumida cada vez que el jugador realiza un dash.")]
     public float DashStaminaCost = 20f;
     #endregion
 
-    #region Physics Layers
-    [Header("LAYERS")]
-    [Tooltip("The LayerMask used to identify the player. Used to exclude the player's own collider from physics checks.")]
+    #region Capas de Física
+    [Header("CAPAS (LAYERS)")]
+    [Tooltip("La LayerMask usada para identificar al jugador. Se usa para excluir el propio collider del jugador en chequeos físicos.")]
     public LayerMask PlayerLayer;
     #endregion
 
-    #region Input Settings
+    #region Configuración de Input
     [Header("INPUT")]
-    [Tooltip("If enabled, movement input will snap to -1, 0, or 1. Useful for consistent behavior between keyboard and analog controllers.")]
+    [Tooltip("Si está activo, el input de movimiento se ajustará a -1, 0 o 1. Útil para un comportamiento consistente entre teclado y mandos analógicos.")]
     public bool SnapInput = true;
 
-    [Tooltip("Minimum vertical input required to register an action (climbing, etc). Prevents accidental inputs from stick drift."), Range(0.01f, 0.99f)]
+    [Tooltip("Input vertical mínimo requerido para registrar una acción (trepar, etc). Previene inputs accidentales por el drift de la palanca."), Range(0.01f, 0.99f)]
     public float VerticalDeadZoneThreshold = 0.3f;
 
-    [Tooltip("Minimum horizontal input required to register movement. Prevents character drifting due to hardware stick drift."), Range(0.01f, 0.99f)]
+    [Tooltip("Input horizontal mínimo requerido para registrar movimiento. Previene que el personaje se deslice solo por drift del hardware."), Range(0.01f, 0.99f)]
     public float HorizontalDeadZoneThreshold = 0.1f;
     #endregion
 
-    #region Movement Settings
-    [Header("MOVEMENT")]
-    [Tooltip("The maximum horizontal velocity the player can achieve.")]
+    #region Ajustes de Movimiento
+    [Header("MOVIMIENTO")]
+    [Tooltip("La velocidad horizontal máxima que el jugador puede alcanzar.")]
     public float MaxSpeed = 14f;
 
-    [Tooltip("How quickly the player reaches Max Speed. High values result in snappier movement.")]
+    [Tooltip("Qué tan rápido el jugador alcanza la Velocidad Máxima. Valores altos resultan en un movimiento más reactivo.")]
     public float Acceleration = 120f;
 
-    [Tooltip("How quickly the player slows down while touching the ground after releasing input.")]
+    [Tooltip("Qué tan rápido se detiene el jugador al tocar el suelo después de soltar el input.")]
     public float GroundDeceleration = 60f;
 
-    [Tooltip("How quickly the player slows down while in the air after releasing input.")]
+    [Tooltip("Qué tan rápido se detiene el jugador mientras está en el aire después de soltar el input.")]
     public float AirDeceleration = 30f;
 
-    [Tooltip("A constant downward force applied while grounded to ensure the player sticks to slopes and uneven terrain."), Range(0f, -10f)]
+    [Tooltip("Fuerza descendente constante aplicada mientras está en el suelo para asegurar que el jugador se pegue a pendientes y terreno irregular."), Range(0f, -10f)]
     public float GroundingForce = -1.5f;
 
-    [Tooltip("The distance the physics system checks below and above the collider to detect ground or ceilings."), Range(0f, 0.5f)]
+    [Tooltip("La distancia que el sistema de física chequea por debajo y por encima del collider para detectar suelo o techos."), Range(0f, 0.5f)]
     public float GrounderDistance = 0.05f;
     #endregion
 
-    #region Jump Settings
-    [Header("JUMP")]
-    [Tooltip("The initial upward velocity applied at the moment of jumping.")]
+    #region Ajustes de Salto
+    [Header("SALTO")]
+    [Tooltip("La velocidad inicial ascendente aplicada en el momento de saltar.")]
     public float JumpPower = 18f;
 
-    [Tooltip("The terminal velocity or maximum speed at which the player can fall.")]
+    [Tooltip("Velocidad terminal o velocidad máxima a la que el jugador puede caer.")]
     public float MaxFallSpeed = 40f;
 
-    [Tooltip("The rate at which the player gains downward velocity while in the air (Gravity).")]
+    [Tooltip("La tasa a la que el jugador gana velocidad descendente mientras está en el aire (Gravedad).")]
     public float FallAcceleration = 50f;
 
-    [Tooltip("The gravity multiplier applied when the jump button is released before reaching the apex. Allows for variable jump heights.")]
+    [Tooltip("Multiplicador de gravedad aplicado cuando se suelta el botón de salto antes de alcanzar el punto máximo. Permite saltos de altura variable.")]
     public float JumpEndEarlyGravityModifier = 3f;
 
-    [Tooltip("The grace period (in seconds) that allows a player to jump after walking off a ledge.")]
+    [Tooltip("Periodo de gracia (en segundos) que permite al jugador saltar justo después de caminar fuera de una plataforma.")]
     public float CoyoteTime = 0.15f;
 
-    [Tooltip("How long (in seconds) the game remembers a jump input before hitting the ground. Makes the controls feel more responsive.")]
+    [Tooltip("Tiempo (en segundos) que el juego recuerda un input de salto antes de tocar el suelo. Hace que los controles se sientan más fluidos.")]
     public float JumpBuffer = 0.2f;
     #endregion
 
-    #region Dash Settings
+    #region Ajustes de Dash
     [Header("DASH")]
-    [Tooltip("The instantaneous velocity applied to the player during a dash.")]
+    [Tooltip("La velocidad instantánea aplicada al jugador durante un dash.")]
     public float DashPower = 20f;
 
-    [Tooltip("The duration (in seconds) that the dash lasts, during which gravity is typically ignored.")]
+    [Tooltip("La duración (en segundos) que dura el dash, durante la cual la gravedad suele ignorarse.")]
     public float DashDuration = 0.2f;
 
-    [Tooltip("The cooldown period (in seconds) before the dash can be used again.")]
+    [Tooltip("Periodo de enfriamiento (en segundos) antes de que el dash pueda usarse de nuevo.")]
     public float DashCooldown = 0.5f;
 
-    [Tooltip("If enabled, the player can perform a dash while not grounded (Ori/Celeste style).")]
+    [Tooltip("Si está activo, el jugador puede realizar un dash mientras no está en el suelo (estilo Celeste/Ori).")]
     public bool CanDashInAir = true;
     #endregion
 }

@@ -1,4 +1,4 @@
-using System;
+/*using System;
 using System.Collections;
 using UnityEngine;
 
@@ -319,10 +319,10 @@ public class PlayerController : MonoBehaviour
     }
 }
 
-public struct FrameInput
-{
-    public bool JumpDown;
-    public bool JumpHeld;
-    public bool DashDown;
-    public Vector2 Move;
-}
+//public struct FrameInput
+//{
+//    public bool JumpDown;
+//    public bool JumpHeld;
+//    public bool DashDown;
+//    public Vector2 Move;
+//}*/
