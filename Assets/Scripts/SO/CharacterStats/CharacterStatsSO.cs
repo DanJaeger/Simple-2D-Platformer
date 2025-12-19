@@ -27,6 +27,13 @@ public class CharacterStatsSO : ScriptableObject
 
     [Tooltip("Cantidad de estamina consumida cada vez que el jugador realiza un dash.")]
     public float DashStaminaCost = 20f;
+
+    [Header("REGENERACION DE ESTAMINA")]
+    [Tooltip("Cantidad de estamina regenerada despues de cada plazo de tiempo.")]
+    public float RecoverStaminaAmount = 1f;
+
+    [Tooltip("Plazo de tiempo para recarga por punto de 'RecoverStaminaAmount'.")]
+    public float RecoverStaminaTime = 0.3f;
     #endregion
 
     #region Capas de Física
