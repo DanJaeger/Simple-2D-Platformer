@@ -1,4 +1,4 @@
-# --- Unity Folders to Ignore ---
+# Unity general
 [Ll]ibrary/
 [Tt]emp/
 [Oo]bj/
@@ -7,13 +7,10 @@
 [Ll]ogs/
 [Mm]emoryCaptures/
 [Rr]ecordings/
-/[Aa]ssets/[Aa]ddressable[Aa]ssets[Dd]ata/UnityEditorData/
-
-# --- IDE and OS Files ---
 .vs/
 .gradle/
-.idea/
-.DS_Store
+
+# Visual Studio / Rider
 *.csproj
 *.sln
 *.suo
@@ -26,24 +23,39 @@
 *.mdb
 *.opendb
 *.VC.db
-sysinfo.txt
 
-# --- Addressables (Keep config, ignore generated data) ---
+# Unity auto-generated files
+sysinfo.txt
+*.pidb.meta
+*.pdb.meta
+*.mdb.meta
+
+# Android / iOS builds
+*.apk
+*.aab
+*.unitypackage
+*.app
+
+# Exclude auto-generated Addressables
 /[Aa]ssets/[Aa]ddressable[Aa]ssets[Dd]ata/*/*.bin*
+
+# Temporary streaming assets
 /[Aa]ssets/[Ss]treamingAssets/aa.meta
 /[Aa]ssets/[Ss]treamingAssets/aa/*
 
-# --- IMPORTANT: Keep Project Settings ---
-# Ensure ProjectSettings folder is NOT ignored. 
-# It contains Scene lists, Layers, and Tags.
-!/ProjectSettings/
+# Exceptions: keep all assets essential for the project
+!/Assets/**
+!/Assets/Scenes/**
+!/Assets/Scripts/**
+!/Assets/Shaders/**
+!/Assets/External/**
+!/Assets/Standard Assets/**
+!/Assets/Plugins/**
+!/Assets/Ink/**
+!/Assets/TextMesh Pro/**
 !/Packages/manifest.json
 !/Packages/packages-lock.json
 
-# --- Assets Exceptions ---
-# Standard rule: Ignore nothing inside Assets by default 
-# unless specified above.
-!/Assets/**
-
-# --- Specific Plugin Overrides ---
+# Ignore editor-specific plugin files
 Assets/Plugins/Editor/JetBrains*
+Assets/Plugins/Editor/*.meta
