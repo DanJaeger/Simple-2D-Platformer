@@ -33,8 +33,9 @@ The project includes a **Cinematic Trigger** system specifically designed to wor
 ### Installation
 1.  Clone the repository.
 2.  Open the project in Unity.
-3.  Configure your AudioClips in the Addressables group with their respective keys.
-4.  Fine-tune the `CharacterStatsSO` assets to modify the control feel (physics, stamina costs, etc.).
+3.  Open Scene folder and select 'Demo'
+4.  Configure your AudioClips in the Addressables group with their respective keys.
+5.  Fine-tune the `CharacterStatsSO` assets to modify the control feel (physics, stamina costs, etc.).
 
 ## 🔊 Usage Example: Audio Manager
 Thanks to the Singleton and Addressables patterns, you can change background music from anywhere in the code (even from a Timeline signal) safely:
